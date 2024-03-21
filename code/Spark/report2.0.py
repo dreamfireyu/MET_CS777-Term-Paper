@@ -5,7 +5,7 @@ import time
 # Spark Session initialization
 spark = SparkSession.builder.appName("DynamicDateReport").getOrCreate()
 
-# Load dataset
+# Load datasets
 stock_df = spark.read.csv('Fact_Stock_Daily.csv', header=True, inferSchema=True)
 date_df = spark.read.csv('Dim_Date_2023.csv', header=True, inferSchema=True)
 
@@ -22,19 +22,17 @@ joined_df = stock_df.join(date_df, "Date_ID")
 # Type of report
 if input_quarter:
     # Specific quarter
-    filtered_df = joined_df.filter((col('Year') == input_year) & (col('Quarter') == input_quarter)).cache()
+    filtered_df = joined_df.filter((col('Year') == input_year) & (col('Quarter') == input_quarter))
 elif input_day:
     # Specific day
-    filtered_df = joined_df.filter((col('Year') == input_year) & (col('Month') == input_month) & (col('Day') == input_day)).cache()
+    filtered_df = joined_df.filter((col('Year') == input_year) & (col('Month') == input_month) & (col('Day') == input_day))
 elif input_month:
     # Specific month
-    filtered_df = joined_df.filter((col('Year') == input_year) & (col('Month') == input_month)).cache()
+    filtered_df = joined_df.filter((col('Year') == input_year) & (col('Month') == input_month))
 else:
     # Specific year
-    filtered_df = joined_df.filter(col('Year') == input_year).cache()
-
-# Repartion if needed
-# optimized_df = filtered_df.repartition(30).cache()
+    filtered_df = joined_df.filter(col('Year') == input_year)
+    
 # Top 10 Stocks by Max Volume
 top_volume_stocks = filtered_df.groupBy("Stock_ID").agg({"Volume": "max"}).withColumnRenamed("max(Volume)", "MaxVolume").orderBy(col("MaxVolume").desc()).limit(10)
 
@@ -53,7 +51,7 @@ top_amount_increase_stocks = filtered_df.orderBy(col("Amount_Of_Incre_Decre").de
 # Top 10 Stocks by Decrease Amount
 top_amount_decrease_stocks = filtered_df.orderBy(col("Amount_Of_Incre_Decre").asc()).select("Stock_ID", "Amount_Of_Incre_Decre").limit(10)
 
-# Show result
+# Show Result
 if input_quarter:
     rpt = f'{input_year}/Q{input_quarter}'
 elif input_day:
@@ -82,5 +80,6 @@ print(f"Top 10 Stocks by Decrease Amount for {rpt}:")
 top_amount_decrease_stocks.show()
 
 print(f"Time used: {time.time() - start_time}")
+
 
 spark.stop()
