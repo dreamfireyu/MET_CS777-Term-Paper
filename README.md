@@ -1,4 +1,4 @@
-# MET_CS777 Term Paper
+# MET_CS777 Team 20 Term Paper
 
 This repository contains materials related to the term paper for the course MET_CS777 at Boston University.
 
