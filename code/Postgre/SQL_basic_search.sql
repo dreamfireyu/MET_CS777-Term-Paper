@@ -77,4 +77,69 @@ DROP INDEX IF EXISTS "Trading".idx_fsd_date_id;
 CREATE INDEX idx_fsd_stock_id ON "Trading".Fact_Stock_Daily(Stock_ID);
 CREATE INDEX idx_fsd_date_id ON "Trading".Fact_Stock_Daily(Date_ID);
 
+-- In event, we first filter out the latest events from 2023-11-20 to 2023-11-24, 
+-- and from these events, we check the stock price changes of the corresponding 
+-- companies on the next day, and from the companies that have increased by more than 3%, 
+-- we categorize the companies according to the time and the type of the event, and finally, 
+--  we sort them according to the date, and the average growth of the stock price.
+--version 1
+with event_stock as(
+	select distinct ds.stock_id, fce.Date_ID, de.Event_Type
+	from "Trading".Fact_Company_Event fce
+	join "Trading".dim_event de on fce.Event_Dim_ID = de.Event_Dim_ID
+	join "Trading".Dim_Stock ds on ds.Stock_ID = fce.Stock_ID
+	where de.Expire_Timestamp isnull 
+	and fce.Date_ID between 20231120 and 20231124
+	order by fce.Date_ID)
+select distinct
+	tmp.event_type,
+	tmp.date_id,
+	tmp.avg_incre
+from (
+select 
+	fsd.stock_id, fsd.date_id, es.event_type,fsd.percent_of_incre_decre,
+	AVG(fsd.percent_of_incre_decre) OVER(PARTITION BY es.event_type) avg_incre
+from "Trading".Fact_Stock_Daily as fsd
+join event_stock es on 
+fsd.Stock_ID = es.stock_id and 
+fsd.Date_ID = es.Date_ID + 1 and
+fsd.percent_of_incre_decre>3.0
+group by fsd.stock_id,fsd.date_id, es.event_type,fsd.percent_of_incre_decre
+) AS tmp
+group by date_id,event_type,tmp.avg_incre
+order by tmp.date_id,tmp.avg_incre
+
+--version2
+CREATE INDEX IF NOT EXISTS idx_fsm_stock_id ON "Trading".Fact_Stock_Minute(Stock_ID);
+CREATE INDEX IF NOT EXISTS idx_fsm_minute_id ON "Trading".Fact_Stock_Minute(Minute_ID);
+CREATE INDEX IF NOT EXISTS idx_fce_stock_id ON "Trading".Fact_Company_Event(Stock_ID);
+CREATE INDEX IF NOT EXISTS idx_fce_date_id ON "Trading".Fact_Company_Event(Date_ID);
+
+WITH event_stock AS (
+  SELECT distinct ds.stock_id, fce.Date_ID, de.Event_Type
+  FROM "Trading".Fact_Company_Event fce
+  JOIN "Trading".dim_event de ON fce.Event_Dim_ID = de.Event_Dim_ID
+  JOIN "Trading".Dim_Stock ds ON ds.Stock_ID = fce.Stock_ID
+  WHERE de.Expire_Timestamp isnull 
+  AND fce.Date_ID between 20231120 and 20231124
+),
+tmp AS (
+  SELECT 
+    fsd.stock_id, fsd.date_id, es.event_type,
+    AVG(fsd.percent_of_incre_decre) OVER(PARTITION BY es.event_type) avg_incre
+  FROM "Trading".Fact_Stock_Daily as fsd
+  JOIN event_stock es ON 
+    fsd.Stock_ID = es.stock_id and 
+    fsd.Date_ID = es.Date_ID + 1 and
+    fsd.percent_of_incre_decre>3.0
+  GROUP BY fsd.stock_id,fsd.date_id, es.event_type,fsd.percent_of_incre_decre
+)
+SELECT distinct
+tmp.event_type,
+tmp.date_id,
+tmp.avg_incre
+FROM tmp
+GROUP BY date_id,event_type,tmp.avg_incre
+ORDER BY tmp.date_id,tmp.avg_incre
+
 
