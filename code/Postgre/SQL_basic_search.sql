@@ -6,29 +6,29 @@ CREATE INDEX IF NOT EXISTS idx_fce_stock_id ON "Trading".Fact_Company_Event(Stoc
 CREATE INDEX IF NOT EXISTS idx_fce_date_id ON "Trading".Fact_Company_Event(Date_ID);
 
 -- select any stock from Shanghai Stock Exchange(SSE)
-SELECT * from "Trading".Dim_Stock
+SELECT ds.stock_id, ds.total_value from "Trading".Dim_Stock ds
 where stock_id>600000
 order by stock_id
-limit 100;
+limit 10;
 
 --select all stocks that rise over 9.9% on 2024-03-11
 SELECT * from "Trading".Fact_Stock_Daily
 where Date_ID = 20240311 and percent_of_incre_decre>9.9
 order by percent_of_incre_decre desc;
 
---select infomation from 20240311 9:30-9:40 on stock SH600004
+--select infomation from 20231120 9:30-9:40 on stock SH600004
 SELECT * from "Trading".Fact_Stock_Minute
-where Minute_ID>202403110930 and Minute_ID<202403110940 and stock_id = 600004;
+where Minute_ID>202311200930 and Minute_ID<202311200940 and stock_id = 600004;
 
 --show total minutes in 2024-03-11
 SELECT count(Minute_ID) AS Total_Minutes
 from "Trading".Dim_Minute
 where DATE_TRUNC('day',CAST(Date AS timestamp))='2024-03-11';
 
---show total trading days in October
+--show total trading days in Feburary 2024
 SELECT count(Date_ID) AS Total_Trading_Days
 from "Trading".Dim_Date
-where year = 2024 and month = 3;
+where year = 2024 and month = 2;
 
 --show recent company events from September
 SELECT de.Stock_ID, de.Event_Date, de.Event_Type, de.Current_Flag,
@@ -36,7 +36,7 @@ SELECT de.Stock_ID, de.Event_Date, de.Event_Type, de.Current_Flag,
 FROM "Trading".Fact_Company_Event fce
 JOIN "Trading".Dim_Event de
 ON fce.Event_Dim_ID = de.Event_Dim_ID
-where fce.Date_ID>20230901 and fce.Stock_ID>600000 and fce.Stock_ID<600050;
+where fce.Date_ID>20230901 and fce.Stock_ID>600000 and fce.Stock_ID<600010;
 
 --select Minute Level Data from 2024-03-11 9:30 to 2024-03-11 9:40 
 -- where the company is in CN market and its Total_Value is in top 10
@@ -49,7 +49,7 @@ WHERE fsm.Stock_ID in (
 	ORDER BY Total_Value DESC
 	LIMIT 10
 )
-AND fsm.Minute_ID >= 202403110930 AND fsm.Minute_ID <= 202403110940;
+AND fsm.Minute_ID >= 202311210930 AND fsm.Minute_ID <= 202311210940;
 
 
 --select Daily Situations for every Monday in November of company SZ300796;
